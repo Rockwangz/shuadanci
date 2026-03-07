@@ -10,8 +10,7 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .unit-btn-active { background-color: #3b82f6; color: white; border-color: #3b82f6; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }.unit-btn-active { background-color: #3b82f6; color: white; border-color: #3b82f6; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
@@ -25,14 +24,9 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzYmthZGx1aHZyYnhjbXJhb3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDU1NzIsImV4cCI6MjA4ODQyMTU3Mn0.xXnakiUL_JpnnXQttwhJFsoXAtvgrWHFME13_zDHIFc';
         
         // 初始化数据库连接
-        // 注意：这里使用 'db' 作为变量名，避免和库名冲突
-        let db = null;
-        if (window.supabase) {
-            db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            console.log("Supabase 连接成功！");
-        } else {
-            alert("错误：Supabase SDK 未加载，请检查网络。");
-        }
+        const { createClient } = supabase;
+        const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log("Supabase 连接成功！");
     </script>
 
     <!-- 导航栏 -->
@@ -70,8 +64,7 @@
             <!-- 编号列表 -->
             <div class="min-h-[3rem]">
                 <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">选择练习</h3>
-                <div id="section-list" class="flex flex-wrap gap-2">
-                    <span class="text-sm text-gray-400 italic pl-1">请先点击上方单元...</span>
+                <div id="section-list" class="flex flex-wrap gap-2"><span class="text-sm text-gray-400 italic pl-1">请先点击上方单元...</span>
                 </div>
             </div>
 
@@ -157,9 +150,7 @@
                     </table>
                 </div>
             </div>
-        </section>
-
-    </main>
+        </section></main>
 
     <!-- 逻辑脚本 -->
     <script>
@@ -206,7 +197,6 @@
 
             navigate: function(pageId) {
                 if (this.state.isPlaying) this.stopChallenge();
-                
                 document.querySelectorAll('section').forEach(el => el.classList.add('hidden'));
                 const target = document.getElementById(`page-${pageId}`);
                 target.classList.remove('hidden');
@@ -227,8 +217,6 @@
             },
 
             selectUnit: async function(unit, btnEl) {
-                if (!db) return alert("数据库连接失败");
-                
                 // 样式切换
                 document.querySelectorAll('#unit-list button').forEach(b => {
                     b.classList.remove('unit-btn-active', 'border-transparent');
@@ -240,7 +228,6 @@
                 const listEl = document.getElementById('section-list');
                 listEl.innerHTML = '<span class="text-sm text-gray-400">加载中...</span>';
 
-                // 使用 db.from
                 const { data, error } = await db
                     .from('vocabularies')
                     .select('section_id')
@@ -252,14 +239,8 @@
                     return;
                 }
 
-                if (!data) {
-                     listEl.innerHTML = '<span class="text-sm text-gray-400">暂无数据</span>';
-                     return;
-                }
-
                 const uniqueSections = [...new Set(data.map(i => i.section_id))].sort();
                 listEl.innerHTML = '';
-                
                 if (uniqueSections.length === 0) {
                     listEl.innerHTML = '<span class="text-sm text-gray-400">暂无内容，请先去批量添加</span>';
                     return;
@@ -275,15 +256,12 @@
             },
 
             selectSection: async function(secId, btnEl) {
-                if (!db) return;
-
                 // 样式
                 document.querySelectorAll('#section-list button').forEach(b => b.classList.remove('ring-2', 'ring-blue-400', 'border-transparent'));
                 btnEl.classList.add('ring-2', 'ring-blue-400', 'border-transparent');
 
                 this.state.currentSection = secId;
-                document.getElementById('current-tag').innerText = secId;
-                document.getElementById('text-cn').innerText = '加载中...';
+                document.getElementById('current-tag').innerText = secId;document.getElementById('text-cn').innerText = '加载中...';
                 document.getElementById('text-en').innerText = '';
 
                 const { data, error } = await db
@@ -292,12 +270,15 @@
                     .eq('section_id', secId)
                     .order('id', { ascending: true });
 
-                if (!error) {
-                    this.state.playlist = data;
-                    document.getElementById('text-cn').innerText = `准备就绪 (${data.length}个)`;
-                    document.getElementById('progress-total').innerText = data.length;
-                    document.getElementById('progress-current').innerText = '0';
+                if (error) {
+                    console.error(error);
+                    document.getElementById('text-cn').innerText = '加载失败';
+                    return;
                 }
+
+                this.state.playlist = data;document.getElementById('text-cn').innerText = `准备就绪 (${data.length}个)`;
+                document.getElementById('progress-total').innerText = data.length;
+                document.getElementById('progress-current').innerText = '0';
             },
 
             startChallenge: async function() {
@@ -305,7 +286,6 @@
                 
                 this.state.isPlaying = true;
                 this.state.stopSignal = false;
-                
                 document.getElementById('btn-start').disabled = true;
                 document.getElementById('btn-start').classList.add('opacity-50', 'cursor-not-allowed');
                 document.getElementById('btn-stop').disabled = false;
@@ -314,28 +294,23 @@
                 const cnEl = document.getElementById('text-cn');
                 const enEl = document.getElementById('text-en');
 
-                // 播放逻辑
-                while (this.state.isPlaying && !this.state.stopSignal) {
-                     for (let i = 0; i < this.state.playlist.length; i++) {
-                        if (this.state.stopSignal) break;
+                for (let i = 0; i < this.state.playlist.length; i++) {
+                    if (this.state.stopSignal) break;
 
-                        const item = this.state.playlist[i];
-                        document.getElementById('progress-current').innerText = i + 1;
+                    const item = this.state.playlist[i];
+                    document.getElementById('progress-current').innerText = i + 1;
 
-                        cnEl.innerText = item.chinese;
-                        enEl.innerText = item.english;
-                        enEl.classList.add('opacity-0'); // 隐藏英文
+                    cnEl.innerText = item.chinese;
+                    enEl.innerText = item.english;
+                    enEl.classList.add('opacity-0');
 
-                        await this.wait(2000); // 显示中文 2秒
-                        if (this.state.stopSignal) break;
+                    await this.wait(2000);
+                    if (this.state.stopSignal) break;
 
-                        enEl.classList.remove('opacity-0'); // 显示英文
-                        
-                        const waitTime = item.type === 'sentence' ? 4000 : 2000;
-                        await this.wait(waitTime); // 停留
-                    }
-                    // 播放完一轮后停止
-                    break; 
+                    enEl.classList.remove('opacity-0');
+                    
+                    const waitTime = item.type === 'sentence' ? 4000 : 2000;
+                    await this.wait(waitTime);
                 }
                 
                 this.stopChallenge(true);
@@ -359,14 +334,12 @@
 
             // --- 批量导入 (已加锁) ---
             processImport: async function() {
-                if (!db) return alert("数据库连接失败");
                 const idStr = document.getElementById('import-id').value.trim();
                 const textStr = document.getElementById('import-text').value;
                 const statusEl = document.getElementById('import-status');
                 
                 if (!idStr || !textStr) return alert('请填写完整');
                 
-                // 提取 Unit: "U1-001" -> "U1"
                 const unitMatch = idStr.match(/^(U\d+)/i);
                 if (!unitMatch) return alert('编号格式需为 U数字-xxx，如 U1-001');
                 const unit = unitMatch[1].toUpperCase();
@@ -377,16 +350,14 @@
 
                 for (let line of lines) {
                     if (!line.trim()) continue;
-                    // 寻找第一个英文字符
                     const match = line.match(/[a-zA-Z]/);
                     if (!match) continue;
 
                     const splitIdx = match.index;
                     const cn = line.substring(0, splitIdx).trim();
                     const en = line.substring(splitIdx).trim();
-                    const type = /[.?!]/.test(en) ? 'sentence' : 'word';
+                    const type = en.split(/\s+/).length > 3 ? 'sentence' : 'word';
 
-                    // 写入数据库
                     const { error } = await db.from('vocabularies').insert({
                         unit, section_id: idStr, chinese: cn, english: en, type
                     });
@@ -404,7 +375,6 @@
 
             // --- 词库管理 (已加锁) ---
             searchVocabulary: async function() {
-                if (!db) return;
                 const q = document.getElementById('manage-search-input').value.trim();
                 const tbody = document.getElementById('manage-list');
                 if (!q) return alert('请输入编号');
@@ -414,7 +384,13 @@
                 const { data, error } = await db.from('vocabularies')
                     .select('*').eq('section_id', q).order('id');
 
-                if (error || !data.length) {
+                if (error) {
+                    console.error(error);
+                    tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-red-400">查询失败</td></tr>';
+                    return;
+                }
+
+                if (!data.length) {
                     tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-400">无数据</td></tr>';
                     return;
                 }
@@ -435,10 +411,14 @@
             },
 
             deleteItem: async function(id) {
-                if (!db) return;
                 if(!confirm("确定删除？")) return;
-                await db.from('vocabularies').delete().eq('id', id);
-                this.searchVocabulary(); // 刷新
+                const { error } = await db.from('vocabularies').delete().eq('id', id);
+                if (error) {
+                    console.error(error);
+                    alert('删除失败');
+                    return;
+                }
+                this.searchVocabulary();
             }
         };
 

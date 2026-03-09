@@ -4,20 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>英语知识点记忆工具</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }.unit-btn-active { background-color: #3b82f6; color: white !important; border-color: #3b82f6; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none;}
+        .unit-btn-active { background-color: #3b82f6; color: white !important; border-color: #3b82f6; }
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* 加载动画 */
+        .loading-spinner {
+            border: 2px solid #f3f4f6;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen flex flex-col">
 
     <!-- Supabase 配置区 -->
     <script>
-        // ⚠️⚠️⚠️ 请在这里填入您的 Supabase URL 和 Anon Key ⚠️⚠️⚠️
+        // Supabase 配置
         const SUPABASE_URL = 'https://bsbkadluhvrbxcmraour.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzYmthZGx1aHZyYnhjbXJhb3VyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDU1NzIsImV4cCI6MjA4ODQyMTU3Mn0.xXnakiUL_JpnnXQttwhJFsoXAtvgrWHFME13_zDHIFc';
         
@@ -35,7 +46,6 @@
                 <span class="font-bold text-lg tracking-tight text-gray-800">记忆工具</span>
             </div>
             <div class="flex gap-2 text-sm">
-                <!-- 这两个按钮需要管理员权限 -->
                 <button onclick="app.checkAuthAndNavigate('import')" class="px-3 py-1.5 text-gray-600 hover:bg-gray-100 rounded-md transition flex items-center gap-1">
                     <span class="text-xs">🔒</span> 批量添加
                 </button>
@@ -67,7 +77,7 @@
             </div>
 
             <!-- 展示卡片 -->
-            <div class="relative bg-white border border-gray-200 rounded-2xl h-64 flex flex-col items-center justify-center p-6 text-center shadow-sm" id="display-box">
+            <div class="relative bg-white border border-gray-200 rounded-2xl min-h-[200px] flex flex-col items-center justify-center p-6 text-center shadow-sm" id="display-box">
                 <span id="current-tag" class="absolute top-3 left-3 bg-gray-100 text-gray-500 text-[10px] font-bold px-2 py-1 rounded uppercase">未选择</span>
                 
                 <div class="w-full space-y-4">
@@ -91,7 +101,6 @@
             </div>
         </section>
 
-
         <!-- 页面 2: 批量添加 (管理员) -->
         <section id="page-import" class="hidden space-y-6 fade-in">
             <div class="flex items-center justify-between mb-4">
@@ -112,13 +121,13 @@
 
                 <div class="flex justify-between items-center">
                     <span id="import-status" class="text-xs text-gray-500"></span>
-                    <button onclick="app.processImport()" id="btn-import" class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow transition">
-                        执行解析并入库
+                    <button onclick="app.processImport()" id="btn-import" class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow transition flex items-center gap-2">
+                        <span id="import-btn-text">执行解析并入库</span>
+                        <span id="import-loading" class="loading-spinner hidden"></span>
                     </button>
                 </div>
             </div>
         </section>
-
 
         <!-- 页面 3: 词库管理 (管理员) -->
         <section id="page-manage" class="hidden space-y-6 fade-in">
@@ -128,9 +137,12 @@
             </div>
 
             <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-                <div class="flex gap-2 mb-4">
-                    <input type="text" id="manage-search-input" class="flex-1 p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-500" placeholder="搜索编号，如 U1-001">
-                    <button onclick="app.searchVocabulary()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">查询</button>
+                <div class="flex gap-2 mb-4 flex-wrap">
+                    <input type="text" id="manage-search-input" class="flex-1 min-w-[150px] p-2 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:border-blue-500" placeholder="搜索编号，如 U1-001">
+                    <button onclick="app.searchVocabulary()" id="search-btn" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2">
+                        <span>查询</span>
+                        <span id="search-loading" class="loading-spinner hidden"></span>
+                    </button>
                 </div>
 
                 <div class="overflow-x-auto rounded-lg border border-gray-100">
@@ -148,12 +160,39 @@
                     </table>
                 </div>
             </div>
-        </section></main>
+        </section>
+    </main>
 
     <!-- 逻辑脚本 -->
     <script>
-        // 【配置】管理员密码
-        const ADMIN_PASS = 'admin888';
+        // 常量配置
+        const CONFIG = {
+            ADMIN_PASS: 'admin888', // 建议后端验证，此处仅临时保留
+            WAIT_TIME_CN: 1000,     // 中文显示时长
+            WAIT_TIME_WORD: 2000,   // 单词显示时长
+            WAIT_TIME_SENTENCE: 4000,// 句子显示时长
+            WAIT_TIME_DOM: 50       // DOM 更新等待时长
+        };
+
+        // DOM 元素缓存
+        const DOM = {
+            btnStart: document.getElementById('btn-start'),
+            btnStop: document.getElementById('btn-stop'),
+            textCn: document.getElementById('text-cn'),
+            textEn: document.getElementById('text-en'),
+            currentTag: document.getElementById('current-tag'),
+            progressCurrent: document.getElementById('progress-current'),
+            progressTotal: document.getElementById('progress-total'),
+            importId: document.getElementById('import-id'),
+            importText: document.getElementById('import-text'),
+            importStatus: document.getElementById('import-status'),
+            importBtnText: document.getElementById('import-btn-text'),
+            importLoading: document.getElementById('import-loading'),
+            manageSearchInput: document.getElementById('manage-search-input'),
+            manageList: document.getElementById('manage-list'),
+            searchBtn: document.getElementById('search-btn'),
+            searchLoading: document.getElementById('search-loading')
+        };
 
         const app = {
             state: {
@@ -165,15 +204,27 @@
                 isAdmin: false // 是否已验证管理员
             },
 
+            /**
+             * 初始化应用
+             */
             init: function() {
                 // 检查本地是否有已登录标记
                 if (localStorage.getItem('english_tool_auth') === 'true') {
                     this.state.isAdmin = true;
                 }
                 this.renderUnits();
+                // 修复DOM缓存可能为空的情况
+                Object.keys(DOM).forEach(key => {
+                    if (!DOM[key]) {
+                        DOM[key] = document.getElementById(key.split(/(?=[A-Z])/).join('-').toLowerCase());
+                    }
+                });
             },
 
-            // --- 核心：权限验证与导航 ---
+            /**
+             * 权限验证并跳转页面
+             * @param {string} pageId - 目标页面ID
+             */
             checkAuthAndNavigate: function(pageId) {
                 // 如果已经是管理员，直接跳转
                 if (this.state.isAdmin) {
@@ -183,7 +234,7 @@
 
                 // 否则，弹出密码框
                 const input = prompt("请输入管理员密码：");
-                if (input === ADMIN_PASS) {
+                if (input === CONFIG.ADMIN_PASS) {
                     this.state.isAdmin = true;
                     localStorage.setItem('english_tool_auth', 'true'); // 记住登录状态
                     alert("验证成功！");
@@ -193,17 +244,26 @@
                 }
             },
 
+            /**
+             * 页面导航
+             * @param {string} pageId - 目标页面ID
+             */
             navigate: function(pageId) {
                 if (this.state.isPlaying) this.stopChallenge();
                 document.querySelectorAll('section').forEach(el => el.classList.add('hidden'));
                 const target = document.getElementById(`page-${pageId}`);
-                target.classList.remove('hidden');
-                target.classList.add('fade-in');
+                if (target) {
+                    target.classList.remove('hidden');
+                    target.classList.add('fade-in');
+                }
             },
 
-            // --- 首页功能 ---
+            /**
+             * 渲染单元列表
+             */
             renderUnits: function() {
                 const container = document.getElementById('unit-list');
+                if (!container) return;
                 container.innerHTML = '';
                 for (let i = 1; i <= 8; i++) {
                     const btn = document.createElement('button');
@@ -214,7 +274,14 @@
                 }
             },
 
+            /**
+             * 选择单元并加载对应章节
+             * @param {string} unit - 单元编号（如U1）
+             * @param {HTMLElement} btnEl - 点击的按钮元素
+             */
             selectUnit: async function(unit, btnEl) {
+                if (!btnEl || !unit) return;
+                
                 // 样式切换
                 document.querySelectorAll('#unit-list button').forEach(b => {
                     b.classList.remove('unit-btn-active', 'border-transparent');
@@ -224,226 +291,323 @@
                 btnEl.classList.add('unit-btn-active', 'border-transparent');
 
                 const listEl = document.getElementById('section-list');
+                if (!listEl) return;
                 listEl.innerHTML = '<span class="text-sm text-gray-400">加载中...</span>';
 
-                const { data, error } = await db
-                    .from('vocabularies')
-                    .select('section_id')
-                    .eq('unit', unit);
+                try {
+                    const { data, error } = await db
+                        .from('vocabularies')
+                        .select('section_id')
+                        .eq('unit', unit);
 
-                if (error) {
-                    console.error(error);
-                    listEl.innerHTML = '<span class="text-sm text-red-400">加载失败: ' + error.message + '</span>';
-                    return;
+                    if (error) throw error;
+
+                    const uniqueSections = [...new Set(data.map(i => i.section_id))].sort();
+                    listEl.innerHTML = '';
+                    if (uniqueSections.length === 0) {
+                        listEl.innerHTML = '<span class="text-sm text-gray-400">暂无内容，请先去批量添加</span>';
+                        return;
+                    }
+
+                    uniqueSections.forEach(sec => {
+                        const btn = document.createElement('button');
+                        btn.className = 'px-3 py-1 bg-white border border-gray-200 rounded text-sm text-gray-600 hover:border-blue-500 hover:text-blue-600 transition';
+                        btn.innerText = sec;
+                        btn.onclick = () => this.selectSection(sec, btn);
+                        listEl.appendChild(btn);
+                    });
+                } catch (err) {
+                    console.error('加载单元失败:', err);
+                    listEl.innerHTML = `<span class="text-sm text-red-400">加载失败: ${err.message || '网络错误'}</span>`;
                 }
-
-                const uniqueSections = [...new Set(data.map(i => i.section_id))].sort();
-                listEl.innerHTML = '';
-                if (uniqueSections.length === 0) {
-                    listEl.innerHTML = '<span class="text-sm text-gray-400">暂无内容，请先去批量添加</span>';
-                    return;
-                }
-
-                uniqueSections.forEach(sec => {
-                    const btn = document.createElement('button');
-                    btn.className = 'px-3 py-1 bg-white border border-gray-200 rounded text-sm text-gray-600 hover:border-blue-500 hover:text-blue-600 transition';
-                    btn.innerText = sec;
-                    btn.onclick = () => this.selectSection(sec, btn);
-                    listEl.appendChild(btn);
-                });
             },
 
+            /**
+             * 选择章节并加载对应词汇
+             * @param {string} secId - 章节编号（如U1-001）
+             * @param {HTMLElement} btnEl - 点击的按钮元素
+             */
             selectSection: async function(secId, btnEl) {
-                // 样式
+                if (!btnEl || !secId) return;
+                
+                // 样式切换
                 document.querySelectorAll('#section-list button').forEach(b => b.classList.remove('ring-2', 'ring-blue-400', 'border-transparent'));
                 btnEl.classList.add('ring-2', 'ring-blue-400', 'border-transparent');
 
                 this.state.currentSection = secId;
-                document.getElementById('current-tag').innerText = secId;document.getElementById('text-cn').innerText = '加载中...';
-                document.getElementById('text-en').innerText = '';
+                DOM.currentTag.innerText = secId;
+                DOM.textCn.innerText = '加载中...';
+                DOM.textEn.innerText = '';
 
-                const { data, error } = await db
-                    .from('vocabularies')
-                    .select('*')
-                    .eq('section_id', secId)
-                    .order('id', { ascending: true });
+                try {
+                    const { data, error } = await db
+                        .from('vocabularies')
+                        .select('*')
+                        .eq('section_id', secId)
+                        .order('id', { ascending: true });
 
-                if (error) {
-                    console.error(error);
-                    document.getElementById('text-cn').innerText = '加载失败';
-                    return;
+                    if (error) throw error;
+
+                    this.state.playlist = data;
+                    DOM.textCn.innerText = `准备就绪 (${data.length}个)`;
+                    DOM.progressTotal.innerText = data.length;
+                    DOM.progressCurrent.innerText = '0';
+                } catch (err) {
+                    console.error('加载章节失败:', err);
+                    DOM.textCn.innerText = `加载失败: ${err.message || '网络错误'}`;
                 }
-
-                this.state.playlist = data;document.getElementById('text-cn').innerText = `准备就绪 (${data.length}个)`;
-                document.getElementById('progress-total').innerText = data.length;
-                document.getElementById('progress-current').innerText = '0';
             },
 
-startChallenge: async function() {
-    if (!this.state.playlist.length) return alert('请先选择内容');
-    
-    this.state.isPlaying = true;
-    this.state.stopSignal = false;
-    document.getElementById('btn-start').disabled = true;
-    document.getElementById('btn-start').classList.add('opacity-50', 'cursor-not-allowed');
-    document.getElementById('btn-stop').disabled = false;
-    document.getElementById('btn-stop').classList.remove('opacity-50', 'cursor-not-allowed');
+            /**
+             * 开始挑战
+             */
+            startChallenge: async function() {
+                if (!this.state.playlist || this.state.playlist.length === 0) {
+                    return alert('请先选择并加载练习内容');
+                }
+                
+                this.state.isPlaying = true;
+                this.state.stopSignal = false;
+                
+                // 更新按钮状态
+                DOM.btnStart.disabled = true;
+                DOM.btnStart.classList.add('opacity-50', 'cursor-not-allowed');
+                DOM.btnStop.disabled = false;
+                DOM.btnStop.classList.remove('opacity-50', 'cursor-not-allowed');
 
-    const cnEl = document.getElementById('text-cn');
-    const enEl = document.getElementById('text-en');
+                try {
+                    for (let i = 0; i < this.state.playlist.length; i++) {
+                        if (this.state.stopSignal) break;
 
-    for (let i = 0; i < this.state.playlist.length; i++) {
-        if (this.state.stopSignal) break;
+                        const item = this.state.playlist[i];
+                        DOM.progressCurrent.innerText = i + 1;
 
-        const item = this.state.playlist[i];
-        document.getElementById('progress-current').innerText = i + 1;
+                        // 1. 隐藏英文
+                        DOM.textEn.classList.add('opacity-0');
+                        DOM.textEn.innerText = '';
+                        
+                        // 2. 显示中文
+                        DOM.textCn.innerText = item.chinese;
 
-        // 1. 确保英文完全隐藏
-        enEl.classList.add('opacity-0');
-        enEl.innerText = '';
-        
-        // 2. 显示中文
-        cnEl.innerText = item.chinese;
+                        // 3. 等待中文显示时长
+                        await this.wait(CONFIG.WAIT_TIME_CN);
+                        if (this.state.stopSignal) break;
 
-        // 3. 等待1秒
-        await this.wait(1000);
-        if (this.state.stopSignal) break;
+                        // 4. 设置英文内容（仍隐藏）
+                        DOM.textEn.innerText = item.english;
+                        
+                        // 5. 等待DOM更新
+                        await this.wait(CONFIG.WAIT_TIME_DOM);
+                        
+                        // 6. 显示英文
+                        DOM.textEn.classList.remove('opacity-0');
+                        
+                        // 7. 根据类型设置等待时长
+                        const waitTime = item.type === 'sentence' ? CONFIG.WAIT_TIME_SENTENCE : CONFIG.WAIT_TIME_WORD;
+                        await this.wait(waitTime);
+                    }
+                } catch (err) {
+                    console.error('挑战过程出错:', err);
+                    alert(`挑战出错: ${err.message || '未知错误'}`);
+                } finally {
+                    this.stopChallenge(true);
+                }
+            },
 
-        // 4. 先设置英文内容（此时仍然是 opacity-0）
-        enEl.innerText = item.english;
-        
-        // 5. 等待一帧，确保DOM更新完成
-        await this.wait(50);
-        
-        // 6. 再显示英文
-        enEl.classList.remove('opacity-0');
-        // 7. 根据类型停留不同时间
-        const waitTime = item.type === 'sentence' ? 3000 : 1500;
-        await this.wait(waitTime);
-    }
-    
-    this.stopChallenge(true);
-},
-
+            /**
+             * 停止挑战
+             * @param {boolean} finished - 是否正常完成
+             */
             stopChallenge: function(finished = false) {
                 this.state.stopSignal = true;
                 this.state.isPlaying = false;
-                document.getElementById('btn-start').disabled = false;
-                document.getElementById('btn-start').classList.remove('opacity-50', 'cursor-not-allowed');
-                document.getElementById('btn-stop').disabled = true;
-                document.getElementById('btn-stop').classList.add('opacity-50', 'cursor-not-allowed');
                 
+                // 重置按钮状态
+                DOM.btnStart.disabled = false;
+                DOM.btnStart.classList.remove('opacity-50', 'cursor-not-allowed');
+                DOM.btnStop.disabled = true;
+                DOM.btnStop.classList.add('opacity-50', 'cursor-not-allowed');
+                
+                // 重置内容
                 if (finished) {
-                    document.getElementById('text-cn').innerText = "完成！";
-                    document.getElementById('text-en').innerText = "Done";
+                    DOM.textCn.innerText = "完成！";
+                    DOM.textEn.innerText = "Done";
+                    DOM.textEn.classList.remove('opacity-0');
+                } else {
+                    // 手动停止时重置为初始状态
+                    DOM.textCn.innerText = "准备好了吗？";
+                    DOM.textEn.innerText = "Ready?";
+                    DOM.textEn.classList.add('opacity-0');
+                    DOM.currentTag.innerText = "未选择";
+                    DOM.progressCurrent.innerText = "0";
                 }
             },
 
+            /**
+             * 等待指定时间
+             * @param {number} ms - 毫秒数
+             * @returns {Promise}
+             */
             wait: ms => new Promise(r => setTimeout(r, ms)),
 
-            // --- 批量导入 (已加锁) ---
-processImport: async function() {
-    const idStr = document.getElementById('import-id').value.trim();
-    const textStr = document.getElementById('import-text').value;
-    const statusEl = document.getElementById('import-status');
-    
-    if (!idStr || !textStr) return alert('请填写完整');
-    
-    const unitMatch = idStr.match(/^(U\d+)/i);
-    if (!unitMatch) return alert('编号格式需为 U数字-xxx，如 U1-001');
-    const unit = unitMatch[1].toUpperCase();
-
-    statusEl.innerText = "处理中...";
-    const lines = textStr.split('\n');
-    let count = 0;
-    let skipped = 0;
-
-    for (let line of lines) {
-        if (!line.trim()) continue;
-        const match = line.match(/[a-zA-Z]/);
-        if (!match) continue;
-
-        const splitIdx = match.index;
-        const cn = line.substring(0, splitIdx).trim();
-        const en = line.substring(splitIdx).trim();
-        const type = en.split(/\s+/).length > 3 ? 'sentence' : 'word';
-
-        // 查重：检查英文是否已存在
-        const { data: existing } = await db.from('vocabularies')
-            .select('id')
-            .eq('english', en)
-            .limit(1);
-        
-        if (existing && existing.length > 0) {
-            skipped++;
-            continue;
-        }
-
-        const { error } = await db.from('vocabularies').insert({
-            unit, section_id: idStr, chinese: cn, english: en, type
-        });
-        
-        if (!error) count++;
-        else console.error("Insert error:", error);
-    }
-    
-    statusEl.innerText = `成功导入 ${count} 条，跳过重复 ${skipped} 条`;
-    statusEl.className = "text-xs text-green-600 font-bold";
-    if(count > 0) document.getElementById('import-text').value = '';
-    
-    alert(`导入完成！成功 ${count} 条，跳过重复 ${skipped} 条。`);
-},
-
-            // --- 词库管理 (已加锁) ---
-            searchVocabulary: async function() {
-                const q = document.getElementById('manage-search-input').value.trim();
-                const tbody = document.getElementById('manage-list');
-                if (!q) return alert('请输入编号');
-
-                tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center">搜索中...</td></tr>';
+            /**
+             * 批量导入数据
+             */
+            processImport: async function() {
+                const idStr = DOM.importId.value.trim();
+                const textStr = DOM.importText.value.trim();
                 
-                const { data, error } = await db.from('vocabularies')
-                    .select('*').eq('section_id', q).order('id');
+                // 验证输入
+                if (!idStr) return alert('请填写编号ID（如U1-001）');
+                if (!textStr) return alert('请填写内容数据，格式为“中文 英文”');
+                
+                // 验证编号格式
+                const unitMatch = idStr.match(/^(U\d+)/i);
+                if (!unitMatch) return alert('编号格式错误，需以U+数字开头，如 U1-001');
+                const unit = unitMatch[1].toUpperCase();
 
-                if (error) {
-                    console.error(error);
-                    tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-red-400">查询失败</td></tr>';
-                    return;
+                // 显示加载状态
+                DOM.importStatus.innerText = "处理中...";
+                DOM.importStatus.className = "text-xs text-gray-600";
+                DOM.importBtnText.innerText = "处理中";
+                DOM.importLoading.classList.remove('hidden');
+                DOM.importId.disabled = true;
+                DOM.importText.disabled = true;
+
+                const lines = textStr.split('\n');
+                let count = 0;
+                let skipped = 0;
+
+                try {
+                    for (let line of lines) {
+                        line = line.trim();
+                        if (!line) continue;
+                        
+                        // 查找英文起始位置
+                        const match = line.match(/[a-zA-Z]/);
+                        if (!match) {
+                            skipped++;
+                            continue;
+                        }
+
+                        const splitIdx = match.index;
+                        const cn = line.substring(0, splitIdx).trim();
+                        const en = line.substring(splitIdx).trim();
+                        const type = en.split(/\s+/).length > 3 ? 'sentence' : 'word';
+
+                        // 查重
+                        const { data: existing } = await db.from('vocabularies')
+                            .select('id')
+                            .eq('english', en)
+                            .limit(1);
+                        
+                        if (existing && existing.length > 0) {
+                            skipped++;
+                            continue;
+                        }
+
+                        // 插入数据
+                        const { error } = await db.from('vocabularies').insert({
+                            unit, section_id: idStr, chinese: cn, english: en, type
+                        });
+                        
+                        if (error) throw error;
+                        count++;
+                    }
+                    
+                    // 更新状态提示
+                    DOM.importStatus.innerText = `成功导入 ${count} 条，跳过重复 ${skipped} 条`;
+                    DOM.importStatus.className = "text-xs text-green-600 font-bold";
+                    alert(`导入完成！成功 ${count} 条，跳过重复 ${skipped} 条。`);
+                    
+                    // 清空文本框
+                    if (count > 0) DOM.importText.value = '';
+                } catch (err) {
+                    console.error('导入失败:', err);
+                    DOM.importStatus.innerText = `导入失败: ${err.message || '未知错误'}`;
+                    DOM.importStatus.className = "text-xs text-red-600 font-bold";
+                    alert(`导入失败: ${err.message || '未知错误'}`);
+                } finally {
+                    // 恢复按钮状态
+                    DOM.importBtnText.innerText = "执行解析并入库";
+                    DOM.importLoading.classList.add('hidden');
+                    DOM.importId.disabled = false;
+                    DOM.importText.disabled = false;
                 }
-
-                if (!data.length) {
-                    tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-400">无数据</td></tr>';
-                    return;
-                }
-
-                tbody.innerHTML = '';
-                data.forEach(item => {
-                    const tr = document.createElement('tr');
-                    tr.className = "hover:bg-gray-50 border-b border-gray-50 last:border-0";
-                    tr.innerHTML = `
-                        <td class="px-4 py-3">${item.chinese}</td>
-                        <td class="px-4 py-3 text-blue-600 font-medium">${item.english}</td>
-                        <td class="px-4 py-3 text-right">
-                            <button onclick="app.deleteItem(${item.id})" class="text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 px-2 py-1 rounded">删除</button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
-                });
             },
 
-            deleteItem: async function(id) {
-                if(!confirm("确定删除？")) return;
-                const { error } = await db.from('vocabularies').delete().eq('id', id);
-                if (error) {
-                    console.error(error);
-                    alert('删除失败');
-                    return;
+            /**
+             * 搜索词汇
+             */
+            searchVocabulary: async function() {
+                const q = DOM.manageSearchInput.value.trim();
+                if (!q) return alert('请输入要查询的编号（如 U1-001）');
+
+                // 显示加载状态
+                DOM.manageList.innerHTML = '<tr><td colspan="3" class="p-4 text-center">搜索中...</td></tr>';
+                DOM.searchBtn.disabled = true;
+                DOM.searchLoading.classList.remove('hidden');
+
+                try {
+                    const { data, error } = await db.from('vocabularies')
+                        .select('*')
+                        .eq('section_id', q)
+                        .order('id');
+
+                    if (error) throw error;
+
+                    if (!data || data.length === 0) {
+                        DOM.manageList.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-gray-400">未找到对应数据</td></tr>';
+                        return;
+                    }
+
+                    // 渲染列表
+                    DOM.manageList.innerHTML = '';
+                    data.forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.className = "hover:bg-gray-50 border-b border-gray-50 last:border-0";
+                        tr.innerHTML = `
+                            <td class="px-4 py-3">${item.chinese || ''}</td>
+                            <td class="px-4 py-3 text-blue-600 font-medium">${item.english || ''}</td>
+                            <td class="px-4 py-3 text-right">
+                                <button onclick="app.deleteItem(${item.id})" class="text-red-500 hover:text-red-700 text-xs font-bold border border-red-200 px-2 py-1 rounded">删除</button>
+                            </td>
+                        `;
+                        DOM.manageList.appendChild(tr);
+                    });
+                } catch (err) {
+                    console.error('查询失败:', err);
+                    DOM.manageList.innerHTML = `<tr><td colspan="3" class="p-4 text-center text-red-400">查询失败: ${err.message || '网络错误'}</td></tr>`;
+                } finally {
+                    // 恢复按钮状态
+                    DOM.searchBtn.disabled = false;
+                    DOM.searchLoading.classList.add('hidden');
                 }
-                this.searchVocabulary();
+            },
+
+            /**
+             * 删除词汇项
+             * @param {number} id - 数据ID
+             */
+            deleteItem: async function(id) {
+                if (!confirm("确定要删除这条数据吗？删除后无法恢复！")) return;
+
+                try {
+                    const { error } = await db.from('vocabularies').delete().eq('id', id);
+                    if (error) throw error;
+                    
+                    // 重新查询刷新列表
+                    this.searchVocabulary();
+                    alert('删除成功！');
+                } catch (err) {
+                    console.error('删除失败:', err);
+                    alert(`删除失败: ${err.message || '未知错误'}`);
+                }
             }
         };
 
-        window.onload = () => app.init();
+        // 页面加载完成后初始化
+        window.addEventListener('DOMContentLoaded', () => app.init());
     </script>
 </body>
 </html>

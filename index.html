@@ -318,7 +318,7 @@ startChallenge: async function() {
         // 6. 再显示英文
         enEl.classList.remove('opacity-0');
         // 7. 根据类型停留不同时间
-        const waitTime = item.type === 'sentence' ? 4000 : 2000;
+        const waitTime = item.type === 'sentence' ? 3000 : 1500;
         await this.wait(waitTime);
     }
     

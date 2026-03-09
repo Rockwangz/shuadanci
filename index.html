@@ -279,40 +279,51 @@
                 document.getElementById('progress-current').innerText = '0';
             },
 
-            startChallenge: async function() {
-                if (!this.state.playlist.length) return alert('请先选择内容');
-                
-                this.state.isPlaying = true;
-                this.state.stopSignal = false;
-                document.getElementById('btn-start').disabled = true;
-                document.getElementById('btn-start').classList.add('opacity-50', 'cursor-not-allowed');
-                document.getElementById('btn-stop').disabled = false;
-                document.getElementById('btn-stop').classList.remove('opacity-50', 'cursor-not-allowed');
+startChallenge: async function() {
+    if (!this.state.playlist.length) return alert('请先选择内容');
+    
+    this.state.isPlaying = true;
+    this.state.stopSignal = false;
+    document.getElementById('btn-start').disabled = true;
+    document.getElementById('btn-start').classList.add('opacity-50', 'cursor-not-allowed');
+    document.getElementById('btn-stop').disabled = false;
+    document.getElementById('btn-stop').classList.remove('opacity-50', 'cursor-not-allowed');
 
-                const cnEl = document.getElementById('text-cn');
-                const enEl = document.getElementById('text-en');
+    const cnEl = document.getElementById('text-cn');
+    const enEl = document.getElementById('text-en');
 
-                for (let i = 0; i < this.state.playlist.length; i++) {
-                    if (this.state.stopSignal) break;
+    for (let i = 0; i < this.state.playlist.length; i++) {
+        if (this.state.stopSignal) break;
 
-                    const item = this.state.playlist[i];
-                    document.getElementById('progress-current').innerText = i + 1;
+        const item = this.state.playlist[i];
+        document.getElementById('progress-current').innerText = i + 1;
 
-                    cnEl.innerText = item.chinese;
-                    enEl.innerText = item.english;
-                    enEl.classList.add('opacity-0');
+        // 1. 确保英文完全隐藏
+        enEl.classList.add('opacity-0');
+        enEl.innerText = '';
+        
+        // 2. 显示中文
+        cnEl.innerText = item.chinese;
 
-                    await this.wait(1500);
-                    if (this.state.stopSignal) break;
+        // 3. 等待1秒
+        await this.wait(1000);
+        if (this.state.stopSignal) break;
 
-                    enEl.classList.remove('opacity-0');
-                    
-                    const waitTime = item.type === 'sentence' ? 4000 : 2000;
-                    await this.wait(waitTime);
-                }
-                
-                this.stopChallenge(true);
-            },
+        // 4. 先设置英文内容（此时仍然是 opacity-0）
+        enEl.innerText = item.english;
+        
+        // 5. 等待一帧，确保DOM更新完成
+        await this.wait(50);
+        
+        // 6. 再显示英文
+        enEl.classList.remove('opacity-0');
+        // 7. 根据类型停留不同时间
+        const waitTime = item.type === 'sentence' ? 4000 : 2000;
+        await this.wait(waitTime);
+    }
+    
+    this.stopChallenge(true);
+},
 
             stopChallenge: function(finished = false) {
                 this.state.stopSignal = true;

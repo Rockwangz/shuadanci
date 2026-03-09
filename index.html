@@ -342,45 +342,57 @@ startChallenge: async function() {
             wait: ms => new Promise(r => setTimeout(r, ms)),
 
             // --- 批量导入 (已加锁) ---
-            processImport: async function() {
-                const idStr = document.getElementById('import-id').value.trim();
-                const textStr = document.getElementById('import-text').value;
-                const statusEl = document.getElementById('import-status');
-                
-                if (!idStr || !textStr) return alert('请填写完整');
-                
-                const unitMatch = idStr.match(/^(U\d+)/i);
-                if (!unitMatch) return alert('编号格式需为 U数字-xxx，如 U1-001');
-                const unit = unitMatch[1].toUpperCase();
+processImport: async function() {
+    const idStr = document.getElementById('import-id').value.trim();
+    const textStr = document.getElementById('import-text').value;
+    const statusEl = document.getElementById('import-status');
+    
+    if (!idStr || !textStr) return alert('请填写完整');
+    
+    const unitMatch = idStr.match(/^(U\d+)/i);
+    if (!unitMatch) return alert('编号格式需为 U数字-xxx，如 U1-001');
+    const unit = unitMatch[1].toUpperCase();
 
-                statusEl.innerText = "处理中...";
-                const lines = textStr.split('\n');
-                let count = 0;
+    statusEl.innerText = "处理中...";
+    const lines = textStr.split('\n');
+    let count = 0;
+    let skipped = 0;
 
-                for (let line of lines) {
-                    if (!line.trim()) continue;
-                    const match = line.match(/[a-zA-Z]/);
-                    if (!match) continue;
+    for (let line of lines) {
+        if (!line.trim()) continue;
+        const match = line.match(/[a-zA-Z]/);
+        if (!match) continue;
 
-                    const splitIdx = match.index;
-                    const cn = line.substring(0, splitIdx).trim();
-                    const en = line.substring(splitIdx).trim();
-                    const type = en.split(/\s+/).length > 3 ? 'sentence' : 'word';
+        const splitIdx = match.index;
+        const cn = line.substring(0, splitIdx).trim();
+        const en = line.substring(splitIdx).trim();
+        const type = en.split(/\s+/).length > 3 ? 'sentence' : 'word';
 
-                    const { error } = await db.from('vocabularies').insert({
-                        unit, section_id: idStr, chinese: cn, english: en, type
-                    });
-                    
-                    if (!error) count++;
-                    else console.error("Insert error:", error);
-                }
-                
-                statusEl.innerText = `成功导入 ${count} 条数据`;
-                statusEl.className = "text-xs text-green-600 font-bold";
-                if(count > 0) document.getElementById('import-text').value = '';
-                
-                alert(`导入完成！成功 ${count} 条。`);
-            },
+        // 查重：检查英文是否已存在
+        const { data: existing } = await db.from('vocabularies')
+            .select('id')
+            .eq('english', en)
+            .limit(1);
+        
+        if (existing && existing.length > 0) {
+            skipped++;
+            continue;
+        }
+
+        const { error } = await db.from('vocabularies').insert({
+            unit, section_id: idStr, chinese: cn, english: en, type
+        });
+        
+        if (!error) count++;
+        else console.error("Insert error:", error);
+    }
+    
+    statusEl.innerText = `成功导入 ${count} 条，跳过重复 ${skipped} 条`;
+    statusEl.className = "text-xs text-green-600 font-bold";
+    if(count > 0) document.getElementById('import-text').value = '';
+    
+    alert(`导入完成！成功 ${count} 条，跳过重复 ${skipped} 条。`);
+},
 
             // --- 词库管理 (已加锁) ---
             searchVocabulary: async function() {

@@ -454,86 +454,56 @@
              * 批量导入数据
              */
             processImport: async function() {
-                const idStr = DOM.importId.value.trim();
-                const textStr = DOM.importText.value.trim();
-                
-                // 验证输入
-                if (!idStr) return alert('请填写编号ID（如U1-001）');
-                if (!textStr) return alert('请填写内容数据，格式为“中文 英文”');
-                
-                // 验证编号格式
-                const unitMatch = idStr.match(/^(U\d+)/i);
-                if (!unitMatch) return alert('编号格式错误，需以U+数字开头，如 U1-001');
-                const unit = unitMatch[1].toUpperCase();
+    const idStr = document.getElementById('import-id').value.trim();
+    const textStr = document.getElementById('import-text').value;
+    const statusEl = document.getElementById('import-status');
+    
+    if (!idStr || !textStr) return alert('请填写完整');
+    
+    const unitMatch = idStr.match(/^(U\d+)/i);
+    if (!unitMatch) return alert('编号格式需为 U数字-xxx，如 U1-001');
+    const unit = unitMatch[1].toUpperCase();
 
-                // 显示加载状态
-                DOM.importStatus.innerText = "处理中...";
-                DOM.importStatus.className = "text-xs text-gray-600";
-                DOM.importBtnText.innerText = "处理中";
-                DOM.importLoading.classList.remove('hidden');
-                DOM.importId.disabled = true;
-                DOM.importText.disabled = true;
+    statusEl.innerText = "处理中...";
+    const lines = textStr.split('\n');
+    let count = 0;
+    let skipped = 0;
 
-                const lines = textStr.split('\n');
-                let count = 0;
-                let skipped = 0;
+    for (let line of lines) {
+        if (!line.trim()) continue;
+        const match = line.match(/[a-zA-Z]/);
+        if (!match) continue;
 
-                try {
-                    for (let line of lines) {
-                        line = line.trim();
-                        if (!line) continue;
-                        
-                        // 查找英文起始位置
-                        const match = line.match(/[a-zA-Z]/);
-                        if (!match) {
-                            skipped++;
-                            continue;
-                        }
+        const splitIdx = match.index;
+        const cn = line.substring(0, splitIdx).trim();
+        const en = line.substring(splitIdx).trim();
+        const type = en.split(/\s+/).length > 3 ? 'sentence' : 'word';
 
-                        const splitIdx = match.index;
-                        const cn = line.substring(0, splitIdx).trim();
-                        const en = line.substring(splitIdx).trim();
-                        const type = en.split(/\s+/).length > 3 ? 'sentence' : 'word';
+        // 👇 只查【当前这个编号】下是否重复英文，不再全局查
+        const { data: existing } = await db.from('vocabularies')
+            .select('id')
+            .eq('section_id', idStr)  // 只限定当前编号
+            .eq('english', en)
+            .limit(1);
+        
+        if (existing && existing.length > 0) {
+            skipped++;
+            continue;
+        }
 
-                        // 查重
-                        const { data: existing } = await db.from('vocabularies')
-                            .select('id')
-                            .eq('english', en)
-                            .limit(1);
-                        
-                        if (existing && existing.length > 0) {
-                            skipped++;
-                            continue;
-                        }
-
-                        // 插入数据
-                        const { error } = await db.from('vocabularies').insert({
-                            unit, section_id: idStr, chinese: cn, english: en, type
-                        });
-                        
-                        if (error) throw error;
-                        count++;
-                    }
-                    
-                    // 更新状态提示
-                    DOM.importStatus.innerText = `成功导入 ${count} 条，跳过重复 ${skipped} 条`;
-                    DOM.importStatus.className = "text-xs text-green-600 font-bold";
-                    alert(`导入完成！成功 ${count} 条，跳过重复 ${skipped} 条。`);
-                    
-                    // 清空文本框
-                    if (count > 0) DOM.importText.value = '';
-                } catch (err) {
-                    console.error('导入失败:', err);
-                    DOM.importStatus.innerText = `导入失败: ${err.message || '未知错误'}`;
-                    DOM.importStatus.className = "text-xs text-red-600 font-bold";
-                    alert(`导入失败: ${err.message || '未知错误'}`);
-                } finally {
-                    // 恢复按钮状态
-                    DOM.importBtnText.innerText = "执行解析并入库";
-                    DOM.importLoading.classList.add('hidden');
-                    DOM.importId.disabled = false;
-                    DOM.importText.disabled = false;
-                }
+        const { error } = await db.from('vocabularies').insert({
+            unit, section_id: idStr, chinese: cn, english: en, type
+        });
+        
+        if (!error) count++;
+        else console.error("Insert error:", error);
+    }
+    
+    statusEl.innerText = `成功导入 ${count} 条，跳过重复 ${skipped} 条`;
+    statusEl.className = "text-xs text-green-600 font-bold";
+    if(count > 0) document.getElementById('import-text').value = '';
+    
+    alert(`导入完成！成功 ${count} 条，跳过重复 ${skipped} 条。`);
             },
 
             /**
